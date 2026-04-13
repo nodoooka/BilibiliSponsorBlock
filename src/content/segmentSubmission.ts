@@ -261,12 +261,31 @@ export function setupSkipButtonControlBar(): void {
 
 export function setupCategoryPill(): void {
     let { categoryPill } = getUIState();
+    logLifecycle("categoryPill/setupRequested", {
+        existing: Boolean(categoryPill),
+        fullVideoSegmentPresent: contentState.sponsorTimes?.some((time) => time.actionType === ActionType.Full) ?? false,
+        videoID: getVideoID(),
+    });
+
     if (!categoryPill) {
         categoryPill = new CategoryPill();
         patchUIState({ categoryPill });
+        logLifecycle("categoryPill/create", {
+            videoID: getVideoID(),
+        });
     }
 
-    categoryPill.attachToPage(voteAsync);
+    void categoryPill.attachToPage(voteAsync);
+
+    const fullVideoSegment = contentState.sponsorTimes?.find((time) => time.actionType === ActionType.Full);
+    if (fullVideoSegment) {
+        logLifecycle("categoryPill/setup:restoreExistingSegment", {
+            UUID: fullVideoSegment.UUID,
+            category: fullVideoSegment.category,
+            videoID: getVideoID(),
+        });
+        void categoryPill.setSegment(fullVideoSegment);
+    }
 }
 
 export function setupDescriptionPill(): void {

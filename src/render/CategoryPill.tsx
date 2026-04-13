@@ -7,6 +7,8 @@ import { VoteResponse } from "../messageTypes";
 import { Category, SegmentUUID, SponsorTime } from "../types";
 import { waitFor } from "../utils/";
 import { addCleanupListener } from "../utils/cleanup";
+import { waitForElement } from "../utils/dom";
+import { describeElement, logLifecycle } from "../utils/logger";
 
 const id = "categoryPill";
 
@@ -46,28 +48,42 @@ export class CategoryPill {
     ): Promise<void> {
         this.vote = vote;
         this.mutationCount = 0;
-        const referenceNode = await waitFor(() => getBilibiliTitleNode());
+        logLifecycle("categoryPill/attach:start", {
+            hasContainer: Boolean(this.container),
+            isSegmentSet: this.isSegmentSet,
+            title: describeElement(getBilibiliTitleNode()),
+        });
+
+        const referenceNode = (await waitForElement(".video-info-container h1", true)) as HTMLElement;
         if (!referenceNode) {
-            console.log("Title element for category pill is not found");
+            logLifecycle("categoryPill/attach:titleMissing", {
+                title: describeElement(getBilibiliTitleNode()),
+            });
             return;
         }
+        logLifecycle("categoryPill/attach:titleReady", {
+            title: describeElement(referenceNode),
+            text: referenceNode.textContent?.trim() || null,
+        });
         this.mutationObserver.disconnect();
         this.mutationObserver.observe(referenceNode, { attributes: true, childList: true });
 
         try {
-            // wait for bilibili to finish loading
-            // await waitFor(() => this.mutationCount > 0);
             await waitFor(getPageLoaded, 10000, 10);
             // if setSegment is called after node attachment, it won't render sometimes
             await waitFor(() => this.isSegmentSet, 10000, 100).catch(() => {});
             this.attachToPageInternal();
         } catch (error) {
-            if (error !== "TIMEOUT") console.log("Category Pill attachment error ", error);
+            if (error !== "TIMEOUT") {
+                logLifecycle("categoryPill/attach:error", {
+                    error: String(error),
+                });
+            }
         }
     }
 
     private async attachToPageInternal(): Promise<void> {
-        const referenceNode = await waitFor(() => getBilibiliTitleNode());
+        const referenceNode = (await waitForElement(".video-info-container h1", true)) as HTMLElement;
 
         if (referenceNode && !referenceNode.contains(this.container)) {
             if (!this.container) {
@@ -95,6 +111,11 @@ export class CategoryPill {
 
             referenceNode.prepend(this.container);
             referenceNode.style.display = "flex";
+            logLifecycle("categoryPill/attach:mounted", {
+                hasState: Boolean(this.lastState),
+                title: describeElement(referenceNode),
+                containerConnected: this.container?.isConnected ?? false,
+            });
         }
     }
 
@@ -115,6 +136,14 @@ export class CategoryPill {
     }
 
     async setSegment(segment: SponsorTime): Promise<void> {
+        logLifecycle("categoryPill/setSegment", {
+            UUID: segment?.UUID,
+            category: segment?.category,
+            actionType: segment?.actionType,
+            hasContainer: Boolean(this.container),
+            containerConnected: this.container?.isConnected ?? false,
+        });
+
         if (this.ref.current?.state?.segment !== segment) {
             const newState = {
                 segment,
@@ -128,6 +157,13 @@ export class CategoryPill {
             if (!Config.config.categoryPillUpdate) {
                 Config.config.categoryPillUpdate = true;
             }
+        }
+
+        if (this.container && !this.container.isConnected) {
+            logLifecycle("categoryPill/setSegment:reattachNeeded", {
+                UUID: segment?.UUID,
+            });
+            void this.attachToPageInternal();
         }
         this.isSegmentSet = true;
     }

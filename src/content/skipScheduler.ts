@@ -13,7 +13,7 @@ import {
 import Utils from "../utils";
 import { isFirefox, isFirefoxOrSafari, isSafari, waitFor } from "../utils/";
 import { GenericUtils } from "../utils/genericUtils";
-import { logDebug } from "../utils/logger";
+import { logDebug, logLifecycle } from "../utils/logger";
 import { isPlayingPlaylist } from "../utils/pageUtils";
 import { getBilibiliVideoID } from "../utils/parseVideoID";
 import { getStartTimeFromUrl } from "../utils/urlParser";
@@ -846,8 +846,26 @@ export function startSkipScheduleCheckingForStartSponsors(): void {
 
         const fullVideoSegment = contentState.sponsorTimes.filter((time) => time.actionType === ActionType.Full)[0];
         if (fullVideoSegment) {
+            logLifecycle("categoryPill/fullVideoSegmentDetected", {
+                UUID: fullVideoSegment.UUID,
+                category: fullVideoSegment.category,
+                categoryPillPresent: Boolean(getCategoryPill()),
+                videoID: getVideoID(),
+            });
             waitFor(() => getCategoryPill()).then(() => {
+                logLifecycle("categoryPill/fullVideoSegmentApply", {
+                    UUID: fullVideoSegment.UUID,
+                    category: fullVideoSegment.category,
+                    videoID: getVideoID(),
+                });
                 getCategoryPill()?.setSegment(fullVideoSegment);
+            }).catch(() => {
+                logLifecycle("categoryPill/fullVideoSegmentApply:timeout", {
+                    UUID: fullVideoSegment.UUID,
+                    category: fullVideoSegment.category,
+                    categoryPillPresent: Boolean(getCategoryPill()),
+                    videoID: getVideoID(),
+                });
             });
         }
 
