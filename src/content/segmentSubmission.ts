@@ -26,7 +26,7 @@ import {
     YTID,
 } from "../types";
 import Utils from "../utils";
-import { waitFor } from "../utils/";
+import { isSafari, waitFor } from "../utils/";
 import { AnimationUtils } from "../utils/animationUtils";
 import { defaultPreviewTime } from "../utils/constants";
 import { durationEquals } from "../utils/duraionUtils";
@@ -586,6 +586,15 @@ export function updateSponsorTimesSubmitting(getFromConfig = true): void {
 
 export function openInfoMenu(): void {
     if (document.getElementById("sponsorBlockPopupContainer") != null) {
+        return;
+    }
+
+    if (isSafari()) {
+        chrome.runtime.sendMessage({
+            message: "openPage",
+            url: "popup.html",
+            attachSourceTab: true,
+        });
         return;
     }
 
