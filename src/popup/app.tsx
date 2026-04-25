@@ -1,3 +1,4 @@
+import { StyleProvider } from "@ant-design/cssinjs";
 import { ConfigProvider, message, theme } from "antd";
 import * as React from "react";
 import Config from "../config";
@@ -17,9 +18,10 @@ import VideoInfo from "./VideoInfo/VideoInfo";
 interface PopupAppProps {
     embedded?: boolean;
     messageListener?: MessageListener;
+    styleContainer?: Element | ShadowRoot;
 }
 
-function app({ embedded, messageListener }: PopupAppProps = {}) {
+function app({ embedded, messageListener, styleContainer }: PopupAppProps = {}) {
     const videoInfoRef = React.createRef<VideoInfo>();
     const controlMenuRef = React.createRef<ControlMenu>();
     const portVideoRef = React.createRef<PortVideoSection>();
@@ -280,7 +282,7 @@ function app({ embedded, messageListener }: PopupAppProps = {}) {
         }
     }
 
-    return (
+    const popup = (
         <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
             {messageContextHolder}
             <div id="sponsorblockPopup" className="sponsorBlockPageBody sb-preload">
@@ -355,6 +357,8 @@ function app({ embedded, messageListener }: PopupAppProps = {}) {
             </div>
         </ConfigProvider>
     );
+
+    return styleContainer ? <StyleProvider container={styleContainer}>{popup}</StyleProvider> : popup;
 }
 
 export default app;

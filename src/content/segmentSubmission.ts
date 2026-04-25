@@ -600,8 +600,9 @@ export function openInfoMenu(): void {
     popup.id = "sponsorBlockPopupContainer";
 
     if (isSafari()) {
-        popup.classList.add("sbSafariInlinePopup");
-        ensureSafariPopupStyles();
+        setupSafariPopupHost(popup);
+        const shadowRoot = popup.attachShadow({ mode: "open" });
+        appendSafariPopupShadowStyles(shadowRoot);
 
         const popupHtml = document.createElement("div");
         popupHtml.id = "sponsorBlockPopupHTML";
@@ -612,7 +613,7 @@ export function openInfoMenu(): void {
         const rootElement = document.createElement("div");
         popupBody.appendChild(rootElement);
         popupHtml.appendChild(popupBody);
-        popup.appendChild(popupHtml);
+        shadowRoot.appendChild(popupHtml);
 
         const container = document.querySelector("#danmukuBox") as HTMLElement;
         container.prepend(popup);
@@ -626,12 +627,13 @@ export function openInfoMenu(): void {
             safariPopupRoot.render(
                 React.createElement(App, {
                     embedded: true,
+                    styleContainer: shadowRoot,
                     messageListener: (request, sender, sendResponse) =>
                         handleContentMessage(request, sender, sendResponse),
                 })
             );
             setTimeout(() => {
-                document.getElementById("sponsorblockPopup")?.classList.remove("sb-preload");
+                shadowRoot.getElementById("sponsorblockPopup")?.classList.remove("sb-preload");
             }, 10);
         });
         return;
@@ -676,16 +678,47 @@ export function closeInfoMenu(): void {
     getContentApp().bus.emit(CONTENT_EVENTS.UI_POPUP_CLOSED, {}, { source: "segmentSubmission.closeInfoMenu" });
 }
 
-function ensureSafariPopupStyles(): void {
-    if (document.getElementById("sponsorBlockSafariPopupStyleSheet")) {
-        return;
-    }
+function setupSafariPopupHost(popup: HTMLElement): void {
+    popup.style.position = "relative";
+    popup.style.width = "374px";
+    popup.style.maxWidth = "100%";
+    popup.style.margin = "0 auto 16px";
+    popup.style.overflow = "hidden";
+    popup.style.borderRadius = "6px";
+    popup.style.backgroundColor = "#222";
+}
 
-    const styleSheet = document.createElement("link");
-    styleSheet.id = "sponsorBlockSafariPopupStyleSheet";
-    styleSheet.rel = "stylesheet";
-    styleSheet.href = chrome.runtime.getURL("popup.css");
-    document.documentElement.appendChild(styleSheet);
+function appendSafariPopupShadowStyles(shadowRoot: ShadowRoot): void {
+    const variables = document.createElement("style");
+    variables.textContent = `
+        :host,
+        #sponsorBlockPopupBody {
+            --sb-main-font-family: PingFang SC, HarmonyOS_Regular, Helvetica Neue, Microsoft YaHei, sans-serif;
+            --sb-main-bg-color: #222;
+            --sb-main-fg-color: #fff;
+            --sb-grey-bg-color: #333;
+            --sb-grey-fg-color: #999;
+            --sb-red-bg-color: #00a1d6;
+            color-scheme: dark;
+        }
+
+        #sponsorBlockPopupHTML {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        #sponsorBlockPopupBody {
+            width: 100%;
+        }
+    `;
+    shadowRoot.appendChild(variables);
+
+    for (const href of ["popup.css", "shared.css"]) {
+        const styleSheet = document.createElement("link");
+        styleSheet.rel = "stylesheet";
+        styleSheet.href = chrome.runtime.getURL(href);
+        shadowRoot.appendChild(styleSheet);
+    }
 }
 
 export function clearSponsorTimes(): void {
