@@ -26,7 +26,7 @@ import {
     YTID,
 } from "../types";
 import Utils from "../utils";
-import { waitFor } from "../utils/";
+import { isSafari, waitFor } from "../utils/";
 import { AnimationUtils } from "../utils/animationUtils";
 import { defaultPreviewTime } from "../utils/constants";
 import { durationEquals } from "../utils/duraionUtils";
@@ -39,17 +39,22 @@ import { generateUserID } from "../utils/setup";
 import { getBvID, getCid, getVideo, getVideoID, waitForVideo } from "../utils/video";
 import { parseBvidAndCidFromVideoId } from "../utils/videoIdUtils";
 import { openWarningDialog } from "../utils/warnings";
+import { handleContentMessage } from "./messageHandler";
 import { getContentApp } from "./app";
 import { CONTENT_EVENTS } from "./app/events";
 import { seekFrameByKeyPressListener } from "./hotkeyHandler";
 import { waitForPlayerUiReady } from "./playerUi";
 import { getSkipNoticeContentContainer } from "./skipNoticeContentContainer";
 import { contentState, syncContentStateStore } from "./state";
+import * as React from "react";
+import { createRoot, Root } from "react-dom/client";
 
 const utils = new Utils();
 
 let lookupWaiting = false;
 let loadedPreloadedSegment = false;
+let safariPopupRoot: Root = null;
+
 function getUIState() {
     return getContentApp().ui.getState();
 }
@@ -594,6 +599,43 @@ export function openInfoMenu(): void {
     const popup = document.createElement("div");
     popup.id = "sponsorBlockPopupContainer";
 
+    if (isSafari()) {
+        ensureSafariPopupStyles();
+
+        const popupHtml = document.createElement("div");
+        popupHtml.id = "sponsorBlockPopupHTML";
+
+        const popupBody = document.createElement("div");
+        popupBody.id = "sponsorBlockPopupBody";
+
+        const rootElement = document.createElement("div");
+        popupBody.appendChild(rootElement);
+        popupHtml.appendChild(popupBody);
+        popup.appendChild(popupHtml);
+
+        const container = document.querySelector("#danmukuBox") as HTMLElement;
+        container.prepend(popup);
+
+        void import("../popup/app").then(({ default: App }) => {
+            if (!document.getElementById("sponsorBlockPopupContainer")) {
+                return;
+            }
+
+            safariPopupRoot = createRoot(rootElement);
+            safariPopupRoot.render(
+                React.createElement(App, {
+                    embedded: true,
+                    messageListener: (request, sender, sendResponse) =>
+                        handleContentMessage(request, sender, sendResponse),
+                })
+            );
+            setTimeout(() => {
+                document.getElementById("sponsorblockPopup")?.classList.remove("sb-preload");
+            }, 10);
+        });
+        return;
+    }
+
     const frame = document.createElement("iframe");
     frame.width = "374";
     frame.height = "500";
@@ -624,10 +666,25 @@ export function closeInfoMenu(): void {
     const popup = document.getElementById("sponsorBlockPopupContainer");
     if (popup === null) return;
 
+    safariPopupRoot?.unmount();
+    safariPopupRoot = null;
+
     popup.remove();
 
     window.dispatchEvent(new Event("closePopupMenu"));
     getContentApp().bus.emit(CONTENT_EVENTS.UI_POPUP_CLOSED, {}, { source: "segmentSubmission.closeInfoMenu" });
+}
+
+function ensureSafariPopupStyles(): void {
+    if (document.getElementById("sponsorBlockSafariPopupStyleSheet")) {
+        return;
+    }
+
+    const styleSheet = document.createElement("link");
+    styleSheet.id = "sponsorBlockSafariPopupStyleSheet";
+    styleSheet.rel = "stylesheet";
+    styleSheet.href = chrome.runtime.getURL("popup.css");
+    document.documentElement.appendChild(styleSheet);
 }
 
 export function clearSponsorTimes(): void {
