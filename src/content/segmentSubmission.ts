@@ -600,6 +600,7 @@ export function openInfoMenu(): void {
     popup.id = "sponsorBlockPopupContainer";
 
     if (isSafari()) {
+        popup.classList.add("sbSafariInlinePopup");
         ensureSafariPopupStyles();
 
         const popupHtml = document.createElement("div");

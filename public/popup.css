@@ -123,6 +123,25 @@ select {
 	max-height: none;
 }
 
+#sponsorBlockPopupContainer.sbSafariInlinePopup {
+	width: 374px;
+	max-width: 100%;
+	margin-left: auto;
+	margin-right: auto;
+	overflow: hidden;
+	border-radius: 6px;
+	background-color: var(--sb-main-bg-color);
+}
+
+#sponsorBlockPopupContainer.sbSafariInlinePopup #sponsorBlockPopupHTML {
+	max-height: 500px;
+	overflow-y: auto;
+}
+
+#sponsorBlockPopupContainer.sbSafariInlinePopup #sponsorBlockPopupBody {
+	width: 100%;
+}
+
 /*
  * Close popup button when displayed in-page (top-right corner)
  */
