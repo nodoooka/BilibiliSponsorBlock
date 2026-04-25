@@ -628,6 +628,7 @@ export function openInfoMenu(): void {
                 React.createElement(App, {
                     embedded: true,
                     styleContainer: shadowRoot,
+                    keyboardEventTarget: shadowRoot,
                     messageListener: (request, sender, sendResponse) =>
                         handleContentMessage(request, sender, sendResponse),
                 })
@@ -708,6 +709,7 @@ function appendSafariPopupShadowStyles(shadowRoot: ShadowRoot): void {
         }
 
         #sponsorBlockPopupBody {
+            position: relative;
             width: 100%;
         }
     `;
@@ -718,6 +720,13 @@ function appendSafariPopupShadowStyles(shadowRoot: ShadowRoot): void {
         styleSheet.rel = "stylesheet";
         styleSheet.href = chrome.runtime.getURL(href);
         shadowRoot.appendChild(styleSheet);
+    }
+
+    const stylusStyle = document.querySelector(".stylus");
+    if (stylusStyle?.textContent) {
+        const style = document.createElement("style");
+        style.textContent = stylusStyle.textContent;
+        shadowRoot.appendChild(style);
     }
 }
 

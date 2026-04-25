@@ -19,9 +19,10 @@ interface PopupAppProps {
     embedded?: boolean;
     messageListener?: MessageListener;
     styleContainer?: Element | ShadowRoot;
+    keyboardEventTarget?: EventTarget;
 }
 
-function app({ embedded, messageListener, styleContainer }: PopupAppProps = {}) {
+function app({ embedded, messageListener, styleContainer, keyboardEventTarget }: PopupAppProps = {}) {
     const videoInfoRef = React.createRef<VideoInfo>();
     const controlMenuRef = React.createRef<ControlMenu>();
     const portVideoRef = React.createRef<PortVideoSection>();
@@ -35,9 +36,13 @@ function app({ embedded, messageListener, styleContainer }: PopupAppProps = {}) 
     const portRef = React.useRef<chrome.runtime.Port>(null);
     const reconnectPortRef = React.useRef(true);
 
-    // Forward click events
-    if (isEmbed) {
-        document.addEventListener("keydown", (e) => {
+    React.useEffect(() => {
+        if (!isEmbed) {
+            return () => undefined;
+        }
+
+        const target = keyboardEventTarget ?? document;
+        const keydownListener = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
             if (
                 target.tagName === "INPUT" ||
@@ -64,21 +69,30 @@ function app({ embedded, messageListener, styleContainer }: PopupAppProps = {}) 
                 altKey: e.altKey,
                 metaKey: e.metaKey,
             });
-        });
-    }
+        };
 
-    getSegmentsFromContentScript(false);
+        target.addEventListener("keydown", keydownListener as EventListener);
+        return () => target.removeEventListener("keydown", keydownListener as EventListener);
+    }, [isEmbed, keyboardEventTarget]);
 
-    if (!Config.configSyncListeners.includes(contentConfigUpdateListener)) {
-        Config.configSyncListeners.push(contentConfigUpdateListener);
-    }
-
-    setupComPort();
     React.useEffect(() => {
+        getSegmentsFromContentScript(false);
+
+        if (!Config.configSyncListeners.includes(contentConfigUpdateListener)) {
+            Config.configSyncListeners.push(contentConfigUpdateListener);
+        }
+
+        setupComPort();
+
         return () => {
             reconnectPortRef.current = false;
             portRef.current?.disconnect();
             portRef.current = null;
+
+            const listenerIndex = Config.configSyncListeners.indexOf(contentConfigUpdateListener);
+            if (listenerIndex !== -1) {
+                Config.configSyncListeners.splice(listenerIndex, 1);
+            }
         };
     }, []);
 
