@@ -30,13 +30,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, callback) {
             chrome.tabs.create({ url: chrome.runtime.getURL("help/index.html") });
             return false;
         case "openPage":
-            chrome.tabs.create({
-                url: chrome.runtime.getURL(
-                    request.url + (request.attachSourceTab && sender.tab?.id != null
-                        ? `${request.url.includes("?") ? "&" : "?"}sourceTabId=${sender.tab.id}`
-                        : "")
-                ),
-            });
+            chrome.tabs.create({ url: chrome.runtime.getURL(request.url) });
             return false;
         case "registerContentScript":
             registerFirefoxContentScript(request);
@@ -85,11 +79,6 @@ chrome.runtime.onConnect.addListener((port) => {
                 popupPort[tabs[0].id] = port;
             }
         );
-    } else if (port.name.startsWith("popup:")) {
-        const tabId = Number(port.name.slice("popup:".length));
-        if (Number.isInteger(tabId) && tabId >= 0) {
-            popupPort[tabId] = port;
-        }
     }
 });
 

@@ -22,9 +22,6 @@ function app() {
     const [messageApi, messageContextHolder] = message.useMessage();
 
     const isEmbed = window !== window.top;
-    const sourceTabIdParam = new URLSearchParams(window.location.search).get("sourceTabId");
-    const sourceTabId = sourceTabIdParam != null ? Number(sourceTabIdParam) : null;
-    const targetTabId = Number.isInteger(sourceTabId) && sourceTabId >= 0 ? sourceTabId : null;
 
     const messageHandler = new MessageHandler();
     let port: chrome.runtime.Port = null;
@@ -100,11 +97,7 @@ function app() {
     }
 
     function getSegmentsFromContentScript(updating: boolean): void {
-        if (targetTabId != null) {
-            onTabs([{ id: targetTabId }], updating);
-        } else {
-            messageHandler.query({ active: true, currentWindow: true }, (tabs) => onTabs(tabs, updating));
-        }
+        messageHandler.query({ active: true, currentWindow: true }, (tabs) => onTabs(tabs, updating));
     }
 
     async function infoFound(request: IsInfoFoundMessageResponse) {
@@ -214,11 +207,6 @@ function app() {
     }
 
     function sendTabMessage(data: Message, callback?) {
-        if (targetTabId != null) {
-            messageHandler.sendMessage(targetTabId, data, callback);
-            return;
-        }
-
         messageHandler.query(
             {
                 active: true,
@@ -246,7 +234,7 @@ function app() {
     }
 
     function setupComPort(): void {
-        port = chrome.runtime.connect({ name: targetTabId != null ? `popup:${targetTabId}` : "popup" });
+        port = chrome.runtime.connect({ name: "popup" });
         port.onDisconnect.addListener(() => setupComPort());
         port.onMessage.addListener((msg) => onMessage(msg));
     }
